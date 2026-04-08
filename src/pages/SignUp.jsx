@@ -14,6 +14,7 @@ function SignUp() {
     const [longitude, setLongitude] = useState("");
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState("");
+    const [message, setMessage] = useState("");
     const [locationLoading, setLocationLoading] = useState(false);
 
     const getCurrentLocation = () => {
@@ -41,6 +42,7 @@ function SignUp() {
         e.preventDefault();
         setLoading(true);
         setError("");
+        setMessage("");
 
         if (password !== confirmPassword) {
             setError("Passwords do not match");
@@ -49,44 +51,43 @@ function SignUp() {
         }
 
         try {
-            // Check if email already exists
-            const { data: existingUser } = await supabaseClient
-                .from('users')
-                .select('email_address')
-                .eq('email_address', email)
-                .single();
-
-            if (existingUser) {
-                throw new Error("Email already registered");
-            }
-
-            // Insert new user into public.users table
-            const { data, error } = await supabaseClient
-                .from('users')
-                .insert({
-                    email_address: email,
-                    password: password,
-                    role: role,
-                    "First name": firstName,
-                    "Last_Name": lastName,
-                    latitude: latitude ? parseFloat(latitude) : null,
-                    longitude: longitude ? parseFloat(longitude) : null,
-                })
-                .select()
-                .single();
+            // Sign up with Supabase Auth - includes email verification
+            const { data, error } = await supabaseClient.auth.signUp({
+                email: email,
+                password: password,
+                options: {
+                    data: {
+                        first_name: firstName,
+                        last_name: lastName,
+                        role: role,
+                        latitude: latitude ? parseFloat(latitude) : null,
+                        longitude: longitude ? parseFloat(longitude) : null,
+                    },
+                    emailRedirectTo: window.location.origin + '/login'
+                }
+            });
 
             if (error) throw error;
 
-            // Store user data in session
-            sessionStorage.setItem('user', JSON.stringify(data));
-
-            // Redirect based on role
-            if (role === "ScrapDealer") {
-                navigate("/scrapdealer");
-            } else {
-                navigate("/dashboard");
+            if (data.user && data.user.identities && data.user.identities.length === 0) {
+                setMessage("Account already exists. Please log in instead.");
+                return;
             }
+
+            // Show success message - user needs to verify email
+            setMessage("Account created successfully! Please check your email to verify your account before logging in.");
+            
+            // Clear form
+            setFirstName("");
+            setLastName("");
+            setEmail("");
+            setPassword("");
+            setConfirmPassword("");
+            setLatitude("");
+            setLongitude("");
+            
         } catch (error) {
+            console.error("Signup failed:", error.message);
             setError(error.message);
         } finally {
             setLoading(false);
@@ -100,6 +101,7 @@ function SignUp() {
                 <p>Join CycleWealth and Start Recycling</p>
 
                 {error && <p style={{ color: "red", fontSize: "14px" }}>{error}</p>}
+                {message && <p style={{ color: "green", fontSize: "14px", marginBottom: "10px" }}>{message}</p>}
 
                 <form onSubmit={handleSignUp}>
                     <input 

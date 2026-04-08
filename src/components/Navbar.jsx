@@ -15,8 +15,6 @@ function Navbar() {
             <div className="auth-buttons">
                 <a href="/login"><button className="login">Login</button></a>
                 <a href="/signup"><button className="sign-up">Sign Up</button></a>
-
-
             </div>
         </div>
     );
