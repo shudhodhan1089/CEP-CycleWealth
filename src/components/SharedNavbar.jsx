@@ -1,9 +1,15 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import './SharedNavbar.css';
 
 function SharedNavbar({ activeLink = null, badgeCount = 0, user = null }) {
     const navigate = useNavigate();
+    const [isEnterpriseRegistered, setIsEnterpriseRegistered] = useState(false);
+
+    useEffect(() => {
+        const enterpriseRegistered = sessionStorage.getItem('enterpriseRegistered');
+        setIsEnterpriseRegistered(enterpriseRegistered === 'true');
+    }, []);
 
     const handleLogin = () => {
         navigate('/login');
@@ -35,6 +41,14 @@ function SharedNavbar({ activeLink = null, badgeCount = 0, user = null }) {
                         <span className="shared-nav__badge">{badgeCount}</span>
                     )}
                 </a>
+                <a href="/enterprise" className={`shared-nav__link ${activeLink === 'enterprise' ? 'shared-nav__link--active' : ''}`}>
+                    Enterprise
+                </a>
+                {isEnterpriseRegistered && (
+                    <a href="/companyorder" className={`shared-nav__link ${activeLink === 'companyorder' ? 'shared-nav__link--active' : ''}`}>
+                        Order Scrap
+                    </a>
+                )}
             </div>
             <div className="shared-nav__actions">
                 {user ? (
