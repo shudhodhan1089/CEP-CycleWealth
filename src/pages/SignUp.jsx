@@ -165,22 +165,7 @@ function SignUp() {
                         >
                             {locationLoading ? "Getting Location..." : "Get Current Location"}
                         </button>
-
-                        <input 
-                            type="number" 
-                            placeholder="Latitude" 
-                            value={latitude}
-                            onChange={(e) => setLatitude(e.target.value)}
-                            step="any"
-                        />
-                        <input 
-                            type="number" 
-                            placeholder="Longitude" 
-                            value={longitude}
-                            onChange={(e) => setLongitude(e.target.value)}
-                            step="any"
-                        />
-
+                    
                         <input 
                             type="password" 
                             placeholder="Password" 

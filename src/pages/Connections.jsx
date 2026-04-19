@@ -91,14 +91,6 @@ function Connections() {
             if (uErr) throw uErr;
             if (cErr) throw cErr;
 
-            console.log('=== DEBUG: Users Data Retrieved ===');
-            console.log('Total users found:', usersData?.length || 0);
-            console.log('Users data:', usersData);
-            console.log('User roles:', usersData?.map(u => ({ id: u.user_id, role: u.role, name: `${u['First name']} ${u['Last_Name']}` })));
-
-            console.log('=== DEBUG: Connections Data Retrieved ===');
-            console.log('Total connections found:', connData?.length || 0);
-            console.log('Connections data:', connData);
 
             // Sort by proximity
             const sorted = [...(usersData || [])].sort((a, b) =>

@@ -1,33 +1,99 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import {
-    PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend,
-    BarChart, Bar, XAxis, YAxis, CartesianGrid, LineChart, Line
-} from 'recharts';
-import './scrapDealer.css';
-import '../components/SharedNavbar.css'
-import Navbar2 from '../components/Navbar2';
+import SharedNavbar from '../components/SharedNavbar';
 import supabaseClient from '../supabase-config';
-
-// Colors for pie chart
-const COLORS = ['#0f9d58', '#4CAF50', '#81C784', '#A5D6A7', '#C8E6C9', '#FF9800', '#2196F3', '#9C27B0'];
+import './scrapDealer.css';
 
 function ScrapDealer() {
     const navigate = useNavigate();
-    const [profile, setProfile] = useState(null);
     const [currentUser, setCurrentUser] = useState(null);
-    const [stats, setStats] = useState({
-        totalCollected: 0,
-        sentToRecycling: 0,
-        remaining: 0,
-        materialStats: []
+    const [activeTab, setActiveTab] = useState('companies');
+    const [profile, setProfile] = useState({
+        businessName: '',
+        firstName: '',
+        lastName: '',
+        email: '',
+        phone: '',
+        address: '',
+        city: '',
+        state: '',
+        zipCode: '',
+        description: '',
+        services: [],
+        workingHours: '',
+        establishedYear: '',
+        website: '',
+        socialMedia: {
+            facebook: '',
+            instagram: '',
+            twitter: '',
+            linkedin: ''
+        },
+        certifications: [],
+        specialties: '',
+        pickupRadius: '',
+        minimumWeight: '',
+        paymentMethods: [],
+        latitude: null,
+        longitude: null,
+        stats: {
+            connections: 0,
+            experience: 0,
+            annualVolume: 0,
+            partners: 0
+        },
+        partners: {
+            companies: [],
+            artisans: [],
+            suppliers: []
+        },
+        experience: [],
+        materials: [],
+        recommendations: []
     });
-    const [transactions, setTransactions] = useState([]);
+    const [isEditing, setIsEditing] = useState(false);
     const [loading, setLoading] = useState(true);
-    const [error, setError] = useState("");
+    const [saving, setSaving] = useState(false);
+    const [error, setError] = useState('');
+    const [success, setSuccess] = useState('');
+
+    // Available services and payment methods
+    const availableServices = [
+        'Metal Scrap Collection',
+        'Plastic Recycling',
+        'Paper Recycling',
+        'E-Waste Collection',
+        'Battery Recycling',
+        'Wood Recycling',
+        'Glass Recycling',
+        'Textile Recycling',
+        'Industrial Waste',
+        'Construction Debris'
+    ];
+
+    const paymentMethodsOptions = [
+        'Cash',
+        'Bank Transfer',
+        'UPI',
+        'Paytm',
+        'Google Pay',
+        'PhonePe',
+        'Cheque',
+        'Credit/Debit Card'
+    ];
+
+    const certificationOptions = [
+        'ISO 14001',
+        'ISO 9001',
+        'R2 Certification',
+        'e-Stewards',
+        'WEEE Compliance',
+        'RoHS Compliance',
+        'Local Municipal License',
+        'Environmental Clearance'
+    ];
 
     useEffect(() => {
-        // Get logged in user from sessionStorage
         const sessionUser = sessionStorage.getItem('user');
         if (!sessionUser) {
             navigate('/login');
@@ -37,386 +103,814 @@ function ScrapDealer() {
         const user = JSON.parse(sessionUser);
         setCurrentUser(user);
 
-        // Verify user is a scrap dealer
         if (user.role !== 'ScrapDealer') {
             navigate('/dashboard');
             return;
         }
 
-        fetchDealerData(user.user_id);
+        fetchProfile(user.user_id);
     }, [navigate]);
 
-    const fetchDealerData = async (userId) => {
+    const fetchProfile = async (userId) => {
         try {
             setLoading(true);
 
-            const { data: profileData, error: profileError } = await supabaseClient
+            // Get basic user info
+            const { data: userData, error: userError } = await supabaseClient
                 .from('users')
                 .select('*')
                 .eq('user_id', userId)
                 .single();
 
-            if (profileError) throw profileError;
+            if (userError) throw userError;
 
-            setProfile({
-                businessName: profileData["First name"] + " " + profileData["Last_Name"],
-                ownerName: profileData["First name"] + " " + profileData["Last_Name"],
-                firstName: profileData["First name"],
-                lastName: profileData["Last_Name"],
-                email: profileData.email_address,
-                role: profileData.role,
-                latitude: profileData.latitude,
-                longitude: profileData.longitude,
-                joinedDate: new Date(profileData.created_at).toLocaleDateString()
-            });
-
-            const { data: transactionsData, error: transactionsError } = await supabaseClient
-                .from('transactions')
+            // Get extended profile info
+            const { data: profileData, error: profileError } = await supabaseClient
+                .from('scrap_dealer_profiles')
                 .select('*')
-                .eq('dealer_id', userId)
-                .order('created_at', { ascending: false });
+                .eq('user_id', userId)
+                .single();
 
-            if (transactionsError && transactionsError.code !== 'PGRST116') {
-                console.log('Transactions table not found, using calculated stats');
-            }
+            const combinedProfile = {
+                businessName: userData["First name"] + " " + userData["Last_Name"],
+                firstName: userData["First name"] || '',
+                lastName: userData["Last_Name"] || '',
+                email: userData.email_address || '',
+                phone: userData.phone || '',
+                latitude: userData.latitude,
+                longitude: userData.longitude,
+                ...profileData
+            };
 
-            if (transactionsData) {
-                setTransactions(transactionsData);
-                calculateStats(transactionsData);
-            } else {
-                // Fallback: Calculate stats from mock transactions or set to 0
-                setStats({
-                    totalCollected: 0,
-                    sentToRecycling: 0,
-                    remaining: 0,
-                    materialStats: []
-                });
-            }
-
+            setProfile(combinedProfile);
         } catch (error) {
-            setError("Failed to load dealer data: " + error.message);
+            console.error('Error fetching profile:', error);
+            setError('Failed to load profile data');
         } finally {
             setLoading(false);
         }
     };
 
-    const calculateStats = (transactionsData) => {
-        const totalCollected = transactionsData.reduce((sum, t) => sum + (t.weight_kg || 0), 0);
-        const sentToRecycling = transactionsData
-            .filter(t => t.status === 'sent_to_recycling')
-            .reduce((sum, t) => sum + (t.weight_kg || 0), 0);
-        const remaining = totalCollected - sentToRecycling;
-
-        // Group by material type for pie chart
-        const materialGroups = transactionsData.reduce((acc, t) => {
-            const material = t.material_type || 'Unknown';
-            if (!acc[material]) acc[material] = 0;
-            acc[material] += t.weight_kg || 0;
-            return acc;
-        }, {});
-
-        const materialStats = Object.entries(materialGroups).map(([name, value]) => ({
-            name,
-            value: Math.round(value)
-        })).sort((a, b) => b.value - a.value);
-
-        setStats({
-            totalCollected,
-            sentToRecycling,
-            remaining,
-            materialStats
-        });
+    const handleInputChange = (e) => {
+        const { name, value } = e.target;
+        if (name.includes('.')) {
+            const [parent, child] = name.split('.');
+            setProfile(prev => ({
+                ...prev,
+                [parent]: {
+                    ...prev[parent],
+                    [child]: value
+                }
+            }));
+        } else {
+            setProfile(prev => ({
+                ...prev,
+                [name]: value
+            }));
+        }
     };
 
-    const handleLogout = async () => {
-        await supabaseClient.auth.signOut();
-        sessionStorage.removeItem('user');
-        navigate('/login');
+    const handleServiceToggle = (service) => {
+        setProfile(prev => ({
+            ...prev,
+            services: prev.services.includes(service)
+                ? prev.services.filter(s => s !== service)
+                : [...prev.services, service]
+        }));
     };
 
-    const handleAddCollection = () => {
-        navigate('/scrapflow');
+    const handlePaymentMethodToggle = (method) => {
+        setProfile(prev => ({
+            ...prev,
+            paymentMethods: prev.paymentMethods.includes(method)
+                ? prev.paymentMethods.filter(m => m !== method)
+                : [...prev.paymentMethods, method]
+        }));
     };
 
-    const handleViewConnections = () => {
-        navigate('/connections');
+    const handleCertificationToggle = (certification) => {
+        setProfile(prev => ({
+            ...prev,
+            certifications: prev.certifications.includes(certification)
+                ? prev.certifications.filter(c => c !== certification)
+                : [...prev.certifications, certification]
+        }));
+    };
+
+    const handleSaveProfile = async () => {
+        try {
+            setSaving(true);
+            setError('');
+            setSuccess('');
+
+            // Update basic user info
+            const { error: userError } = await supabaseClient
+                .from('users')
+                .update({
+                    phone: profile.phone,
+                    latitude: profile.latitude,
+                    longitude: profile.longitude
+                })
+                .eq('user_id', currentUser.user_id);
+
+            if (userError) throw userError;
+
+            // Update extended profile
+            const profileData = {
+                user_id: currentUser.user_id,
+                business_name: profile.businessName,
+                address: profile.address,
+                city: profile.city,
+                state: profile.state,
+                zip_code: profile.zipCode,
+                description: profile.description,
+                services: profile.services,
+                working_hours: profile.workingHours,
+                established_year: profile.establishedYear,
+                website: profile.website,
+                social_media: profile.socialMedia,
+                certifications: profile.certifications,
+                specialties: profile.specialties,
+                pickup_radius: profile.pickupRadius,
+                minimum_weight: profile.minimumWeight,
+                payment_methods: profile.paymentMethods,
+                updated_at: new Date().toISOString()
+            };
+
+            const { error: profileError } = await supabaseClient
+                .from('scrap_dealer_profiles')
+                .upsert(profileData, {
+                    onConflict: 'user_id'
+                });
+
+            if (profileError) throw profileError;
+
+            setSuccess('Profile updated successfully!');
+            setIsEditing(false);
+        } catch (error) {
+            console.error('Error saving profile:', error);
+            setError('Failed to save profile: ' + error.message);
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    const handleCancel = () => {
+        fetchProfile(currentUser.user_id);
+        setIsEditing(false);
+        setError('');
+        setSuccess('');
     };
 
     if (loading) {
         return (
-            <div className="scrap-dealer-page">
-                <Navbar2 user={currentUser} />
-                <div className="scrap-dealer-main loading-container">
-                    <div className="loading-spinner">
-                        <div className="spinner"></div>
-                        <p>Loading your dashboard...</p>
-                    </div>
-                </div>
-            </div>
-        );
-    }
-
-    if (error) {
-        return (
-            <div className="scrap-dealer-page">
-                <Navbar2 user={currentUser} />
-                <div className="scrap-dealer-main error-container">
-                    <div className="error-card">
-                        <span className="error-icon">⚠️</span>
-                        <h3>Oops! Something went wrong</h3>
-                        <p>{error}</p>
-                        <button onClick={() => navigate('/login')} className="btn-primary">
-                            Go to Login
-                        </button>
-                    </div>
-                </div>
-            </div>
-        );
-    }
-
-    if (!profile) {
-        return (
-            <div className="scrap-dealer-page">
-                <Navbar2 user={currentUser} />
-                <div className="scrap-dealer-main error-container">
-                    <div className="error-card">
-                        <span className="error-icon">👤</span>
-                        <h3>No Profile Data</h3>
-                        <p>Please log in again to access your dashboard.</p>
-                        <button onClick={() => navigate('/login')} className="btn-primary">
-                            Go to Login
-                        </button>
-                    </div>
+            <div className="profile-page">
+                <SharedNavbar activeLink="profile" />
+                <div className="profile-loading">
+                    <div className="spinner"></div>
+                    <p>Loading profile...</p>
                 </div>
             </div>
         );
     }
 
     return (
-        <div className="scrap-dealer-page">
-            <Navbar2 user={currentUser} />
-            <div className="scrap-dealer-main">
-                <div className="scrap-dealer-container">
-                    {/* Welcome Banner */}
-                    <div className="welcome-banner">
-                        <div className="welcome-content">
-                            <h1>Welcome back, {profile.firstName}! 👋</h1>
-                            <p>Manage your scrap collection and track your recycling progress</p>
-                        </div>
-                        <div className="quick-actions">
-                            <button className="quick-action-btn primary" onClick={handleViewConnections}>
-                                <span>➕</span>
-                                Add Collection
-                            </button>
-                            <button className="quick-action-btn secondary" onClick={handleViewConnections}>
-                                <span>🔗</span>
-                                Connections
-                            </button>
+        <div className="profile-page">
+            <SharedNavbar activeLink="profile" />
+            <div className="profile-container">
+                
+                {/* Profile Header Card */}
+                <div className="profile-header-card">
+                    <div className="profile-cover">
+                        <div className="profile-avatar-large">
+                            {profile.firstName?.charAt(0)}{profile.lastName?.charAt(0)}
                         </div>
                     </div>
-
-                    {/* Profile Section */}
-                    <div className="dealer-section profile-section">
-                        <div className="section-header">
-                            <h2 className="section-title">🏪 Business Profile</h2>
-                        </div>
-                        <div className="profile-card">
-                            <div className="dealer-header">
-                                <div className="dealer-avatar">
-                                    {profile.firstName?.charAt(0)}{profile.lastName?.charAt(0)}
-                                </div>
-                                <div className="dealer-title">
-                                    <h2>{profile.businessName}</h2>
-                                    <p className="role-badge">{profile.role}</p>
+                    <div className="profile-info-section">
+                        <div className="profile-main-info">
+                            <div>
+                                <h1 className="profile-name">{profile.firstName} {profile.lastName}</h1>
+                                <p className="profile-title">Founder & Proprietor â {profile.businessName}</p>
+                                <p className="profile-location">ð {profile.address}, {profile.city}, {profile.state}</p>
+                                <div className="profile-badges">
+                                    <span className="badge badge-green">â Metal Recycler</span>
+                                    <span className="badge badge-blue">â Industrial Scrap</span>
+                                    <span className="badge badge-yellow">â Verified Dealer</span>
                                 </div>
                             </div>
-
-                            <div className="dealer-info-grid">
-                                <div className="profile-info-item">
-                                    <span className="info-label">📧 Email</span>
-                                    <p>{profile.email}</p>
-                                </div>
-                                <div className="profile-info-item">
-                                    <span className="info-label">📅 Member Since</span>
-                                    <p>{profile.joinedDate}</p>
-                                </div>
-                                <div className="profile-info-item">
-                                    <span className="info-label">♻️ Total Collections</span>
-                                    <p>{transactions.length} transactions</p>
-                                </div>
+                            <div className="profile-actions">
+                                {!isEditing ? (
+                                    <div className="action-buttons">
+                                        <button 
+                                            className="btn btn-primary"
+                                            onClick={() => setIsEditing(true)}
+                                        >
+                                            Edit Profile
+                                        </button>
+                                        <button 
+                                            className="btn btn-secondary"
+                                            onClick={() => navigate('/add-scrap')}
+                                        >
+                                            + Add Collection
+                                        </button>
+                                        <button 
+                                            className="btn btn-secondary"
+                                            onClick={() => navigate('/view-inventory')}
+                                        >
+                                            View Inventory
+                                        </button>
+                                    </div>
+                                ) : (
+                                    <div className="edit-actions">
+                                        <button 
+                                            className="btn btn-success"
+                                            onClick={handleSaveProfile}
+                                            disabled={saving}
+                                        >
+                                            {saving ? 'Saving...' : 'Save'}
+                                        </button>
+                                        <button 
+                                            className="btn btn-secondary"
+                                            onClick={handleCancel}
+                                        >
+                                            Cancel
+                                        </button>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                        
+                        {/* Stats */}
+                        <div className="stats-row">
+                            <div className="stat-box">
+                                <div className="stat-num">{profile.stats?.connections || 0}+</div>
+                                <div className="stat-lbl">Connections</div>
+                            </div>
+                            <div className="stat-box">
+                                <div className="stat-num">{profile.stats?.experience || 0} yrs</div>
+                                <div className="stat-lbl">Experience</div>
+                            </div>
+                            <div className="stat-box">
+                                <div className="stat-num">â{profile.stats?.annualVolume || 0}Cr</div>
+                                <div className="stat-lbl">Annual Volume</div>
+                            </div>
+                            <div className="stat-box">
+                                <div className="stat-num">{profile.stats?.partners || 0}</div>
+                                <div className="stat-lbl">Partners</div>
                             </div>
                         </div>
                     </div>
+                </div>
 
-                    {/* Stats Section */}
-                    <div className="dealer-section">
-                        <h2 className="section-title">📊 Scrap Collection Statistics</h2>
+                {error && <div className="alert alert-error">{error}</div>}
+                {success && <div className="alert alert-success">{success}</div>}
 
-                        <div className="stats-grid">
-                            <div className="stat-card collected">
-                                <div className="stat-value">{stats.totalCollected.toLocaleString()}</div>
-                                <div className="stat-label">kg Total Collected</div>
+                <div className="profile-content">
+                    {/* About Section */}
+                    <div className="card">
+                        <p className="section-title">About</p>
+                        {isEditing ? (
+                            <textarea
+                                name="description"
+                                value={profile.description}
+                                onChange={handleInputChange}
+                                className="form-textarea"
+                                rows="4"
+                                placeholder="Describe your business, services, and what makes you unique..."
+                            />
+                        ) : (
+                            <>
+                                <p className="about-text">
+                                    {profile.description || 'No description provided yet. Add details about your business, services, and expertise.'}
+                                </p>
+                                {profile.establishedYear && (
+                                    <p className="about-text">
+                                        Member of <strong>Maharashtra Recyclers Association</strong> since {profile.establishedYear}.
+                                    </p>
+                                )}
+                            </>
+                        )}
+                    </div>
+
+                    {/* Partners Section */}
+                    <div className="card">
+                        <div className="tabs-container">
+                            <div 
+                                className={`tab ${activeTab === 'companies' ? 'active' : ''}`}
+                                onClick={() => setActiveTab('companies')}
+                            >
+                                Corporate partners
                             </div>
-                            <div className="stat-card recycling">
-                                <div className="stat-value">{stats.sentToRecycling.toLocaleString()}</div>
-                                <div className="stat-label">kg Sent to Recycling</div>
+                            <div 
+                                className={`tab ${activeTab === 'artisans' ? 'active' : ''}`}
+                                onClick={() => setActiveTab('artisans')}
+                            >
+                                Skilled artisans
                             </div>
-                            <div className="stat-card remaining">
-                                <div className="stat-value">{stats.remaining.toLocaleString()}</div>
-                                <div className="stat-label">kg Remaining</div>
+                            <div 
+                                className={`tab ${activeTab === 'suppliers' ? 'active' : ''}`}
+                                onClick={() => setActiveTab('suppliers')}
+                            >
+                                Suppliers
                             </div>
                         </div>
 
-                        {/* Progress Bar */}
-                        <div className="progress-container">
-                            <p className="progress-label">
-                                Recycling Progress: {stats.totalCollected > 0
-                                    ? Math.round((stats.sentToRecycling / stats.totalCollected) * 100)
-                                    : 0}%
-                            </p>
-                            <div className="progress-bar-bg">
-                                <div
-                                    className="progress-bar-fill"
-                                    style={{
-                                        width: `${stats.totalCollected > 0
-                                            ? (stats.sentToRecycling / stats.totalCollected) * 100
-                                            : 0}%`
-                                    }}
-                                ></div>
-                            </div>
-                        </div>
-
-                        {/* Pie Chart - Material Distribution */}
-                        {stats.materialStats.length > 0 && (
-                            <div className="charts-grid">
-                                <div className="chart-container">
-                                    <h3 className="chart-title">📦 Material Distribution</h3>
-                                    <ResponsiveContainer width="100%" height={350}>
-                                        <PieChart>
-                                            <Pie
-                                                data={stats.materialStats}
-                                                cx="50%"
-                                                cy="50%"
-                                                innerRadius={60}
-                                                outerRadius={110}
-                                                paddingAngle={4}
-                                                dataKey="value"
-                                                animationBegin={0}
-                                                animationDuration={800}
-                                            >
-                                                {stats.materialStats.map((entry, index) => (
-                                                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                                                ))}
-                                            </Pie>
-                                            <Tooltip
-                                                formatter={(value) => `${value} kg`}
-                                                contentStyle={{ backgroundColor: '#fff', border: '2px solid #0f9d58' }}
-                                            />
-                                            <Legend />
-                                        </PieChart>
-                                    </ResponsiveContainer>
-                                </div>
-
-                                <div className="chart-container">
-                                    <h3 className="chart-title">📊 Material Breakdown (Bar Chart)</h3>
-                                    <ResponsiveContainer width="100%" height={350}>
-                                        <BarChart data={stats.materialStats}>
-                                            <CartesianGrid strokeDasharray="3 3" stroke="#e0e0e0" />
-                                            <XAxis
-                                                dataKey="name"
-                                                angle={-45}
-                                                textAnchor="end"
-                                                height={100}
-                                                interval={0}
-                                            />
-                                            <YAxis label={{ value: 'Weight (kg)', angle: -90, position: 'insideLeft' }} />
-                                            <Tooltip
-                                                formatter={(value) => `${value} kg`}
-                                                contentStyle={{ backgroundColor: '#fff', border: '2px solid #0f9d58' }}
-                                            />
-                                            <Bar dataKey="value" fill="#0f9d58" radius={[12, 12, 0, 0]} animationDuration={800} />
-                                        </BarChart>
-                                    </ResponsiveContainer>
-                                </div>
-                            </div>
-                        )}
-
-                        {/* Collection Status Chart */}
-                        {stats.totalCollected > 0 && (
-                            <div className="chart-container full-width">
-                                <h3 className="chart-title">♻️ Collection Status Overview</h3>
-                                <div className="status-overview">
-                                    <div className="status-item">
-                                        <div className="status-icon collected-icon">📥</div>
-                                        <div className="status-details">
-                                            <p className="status-value">{stats.totalCollected.toLocaleString()} kg</p>
-                                            <p className="status-name">Total Collected</p>
-                                            <p className="status-percentage">100%</p>
-                                        </div>
-                                    </div>
-                                    <div className="status-arrow">→</div>
-                                    <div className="status-item">
-                                        <div className="status-icon recycling-icon">♻️</div>
-                                        <div className="status-details">
-                                            <p className="status-value">{stats.sentToRecycling.toLocaleString()} kg</p>
-                                            <p className="status-name">Sent to Recycling</p>
-                                            <p className="status-percentage">{stats.totalCollected > 0 ? Math.round((stats.sentToRecycling / stats.totalCollected) * 100) : 0}%</p>
-                                        </div>
-                                    </div>
-                                    <div className="status-arrow">→</div>
-                                    <div className="status-item">
-                                        <div className="status-icon remaining-icon">📦</div>
-                                        <div className="status-details">
-                                            <p className="status-value">{stats.remaining.toLocaleString()} kg</p>
-                                            <p className="status-name">Remaining</p>
-                                            <p className="status-percentage">{stats.totalCollected > 0 ? Math.round((stats.remaining / stats.totalCollected) * 100) : 0}%</p>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        )}
-
-                        {/* Recent Transactions */}
-                        {transactions.length > 0 ? (
-                            <div className="transactions-section">
-                                <div className="section-header">
-                                    <h3 className="transactions-title">📋 Recent Transactions</h3>
-                                    <button className="view-all-btn" onClick={() => navigate('/transactions')}>
-                                        View All →
-                                    </button>
-                                </div>
-                                <div className="transactions-list">
-                                    {transactions.slice(0, 5).map((transaction, index) => (
-                                        <div key={index} className="transaction-item">
-                                            <div className="transaction-info">
-                                                <span className="material-type">{transaction.material_type || 'Unknown Material'}</span>
-                                                <span className="transaction-date">
-                                                    {new Date(transaction.created_at).toLocaleDateString()}
-                                                </span>
+                        {activeTab === 'companies' && (
+                            <div className="connections-list">
+                                {profile.partners?.companies?.length > 0 ? (
+                                    profile.partners.companies.map((partner, index) => (
+                                        <div key={index} className="connection-card">
+                                            <div className="avatar-small">
+                                                {partner.name?.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase()}
                                             </div>
-                                            <span className={`transaction-weight ${transaction.status}`}>
-                                                {transaction.weight_kg} kg
+                                            <div className="connection-info">
+                                                <p className="connection-name">{partner.name}</p>
+                                                <p className="connection-desc">{partner.description}</p>
+                                            </div>
+                                            <span className={`badge ${partner.status === 'Active' ? 'badge-success' : 'badge-warning'}`}>
+                                                {partner.status}
                                             </span>
                                         </div>
-                                    ))}
+                                    ))
+                                ) : (
+                                    <p className="no-connections">No corporate partners added yet.</p>
+                                )}
+                            </div>
+                        )}
+
+                        {activeTab === 'artisans' && (
+                            <div className="connections-list">
+                                {profile.partners?.artisans?.length > 0 ? (
+                                    profile.partners.artisans.map((partner, index) => (
+                                        <div key={index} className="connection-card">
+                                            <div className="avatar-small">
+                                                {partner.name?.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase()}
+                                            </div>
+                                            <div className="connection-info">
+                                                <p className="connection-name">{partner.name}</p>
+                                                <p className="connection-desc">{partner.description}</p>
+                                            </div>
+                                            <span className={`badge ${partner.status === 'Regular buyer' ? 'badge-success' : 'badge-warning'}`}>
+                                                {partner.status}
+                                            </span>
+                                        </div>
+                                    ))
+                                ) : (
+                                    <p className="no-connections">No artisan partners added yet.</p>
+                                )}
+                            </div>
+                        )}
+
+                        {activeTab === 'suppliers' && (
+                            <div className="connections-list">
+                                {profile.partners?.suppliers?.length > 0 ? (
+                                    profile.partners.suppliers.map((partner, index) => (
+                                        <div key={index} className="connection-card">
+                                            <div className="avatar-small">
+                                                {partner.name?.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase()}
+                                            </div>
+                                            <div className="connection-info">
+                                                <p className="connection-name">{partner.name}</p>
+                                                <p className="connection-desc">{partner.description}</p>
+                                            </div>
+                                            <span className={`badge ${partner.status === 'Active' ? 'badge-success' : 'badge-warning'}`}>
+                                                {partner.status}
+                                            </span>
+                                        </div>
+                                    ))
+                                ) : (
+                                    <p className="no-connections">No suppliers added yet.</p>
+                                )}
+                            </div>
+                        )}
+
+                        <button className="view-all-btn">View all connections â</button>
+                    </div>
+
+                    {/* Experience Section */}
+                    <div className="card">
+                        <p className="section-title">Experience</p>
+                        <div className="experience-list">
+                            {profile.experience?.length > 0 ? (
+                                profile.experience.map((exp, index) => (
+                                    <div key={index} className="experience-row">
+                                        <div className="exp-icon">â</div>
+                                        <div className="exp-details">
+                                            <p className="exp-title">{exp.title}</p>
+                                            <p className="exp-company">{exp.company} Â· {exp.period}</p>
+                                            <p className="exp-description">{exp.description}</p>
+                                        </div>
+                                    </div>
+                                ))
+                            ) : (
+                                <div className="experience-row">
+                                    <div className="exp-icon">â</div>
+                                    <div className="exp-details">
+                                        <p className="exp-title">Founder & Proprietor</p>
+                                        <p className="exp-company">{profile.businessName} Â· {profile.establishedYear || 'Present'} â present</p>
+                                        <p className="exp-description">
+                                            Managing end-to-end scrap operations â sourcing, sorting, weighing, and reselling ferrous, non-ferrous, and e-waste materials.
+                                        </p>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+
+                    {/* Materials Section */}
+                    <div className="card">
+                        <p className="section-title">Materials dealt in</p>
+                        <div className="materials-grid">
+                            {profile.materials?.length > 0 ? (
+                                profile.materials.map((material, index) => (
+                                    <span key={index} className="pill">{material}</span>
+                                ))
+                            ) : (
+                                <>
+                                    <span className="pill">Steel & Iron</span>
+                                    <span className="pill">Copper</span>
+                                    <span className="pill">Brass</span>
+                                    <span className="pill">Aluminium</span>
+                                    <span className="pill">Stainless Steel</span>
+                                    <span className="pill">E-waste / PCBs</span>
+                                </>
+                            )}
+                        </div>
+                    </div>
+
+                    {/* Recommendations Section */}
+                    <div className="card">
+                        <p className="section-title">Recommendations</p>
+                        <div className="recommendations-list">
+                            {profile.recommendations?.length > 0 ? (
+                                profile.recommendations.map((rec, index) => (
+                                    <div key={index} className="recommendation">
+                                        <p className="recommendation-text">"{rec.text}"</p>
+                                        <p className="recommendation-author">â {rec.author}</p>
+                                    </div>
+                                ))
+                            ) : (
+                                <>
+                                    <div className="recommendation">
+                                        <p className="recommendation-text">"Fair pricing and reliable service. Always on time with pickups."</p>
+                                        <p className="recommendation-author">â Happy Customer</p>
+                                    </div>
+                                    <div className="recommendation">
+                                        <p className="recommendation-text">"Best source for quality scrap materials in the area."</p>
+                                        <p className="recommendation-author">â Regular Client</p>
+                                    </div>
+                                </>
+                            )}
+                        </div>
+                        <button className="view-all-btn">Write a recommendation â</button>
+                    </div>
+
+                    {/* Business Address */}
+                    <div className="card">
+                        <div className="address-header">
+                            <p className="section-title">ð Business Address</p>
+                            {!isEditing && (profile.address || profile.city) && (
+                                <button className="view-all-btn" onClick={() => window.open(`https://maps.google.com/?q=${encodeURIComponent(`${profile.address}, ${profile.city}, ${profile.state}`)}`, '_blank')}>
+                                    View on Map â
+                                </button>
+                            )}
+                        </div>
+                        
+                        {isEditing ? (
+                            <div className="address-form">
+                                <div className="address-input-group">
+                                    <div className="input-icon">ð</div>
+                                    <input
+                                        type="text"
+                                        name="address"
+                                        value={profile.address}
+                                        onChange={handleInputChange}
+                                        className="form-input address-input"
+                                        placeholder="Street Address"
+                                    />
+                                </div>
+                                <div className="address-row">
+                                    <div className="address-input-group">
+                                        <div className="input-icon">ð</div>
+                                        <input
+                                            type="text"
+                                            name="city"
+                                            value={profile.city}
+                                            onChange={handleInputChange}
+                                            className="form-input address-input"
+                                            placeholder="City"
+                                        />
+                                    </div>
+                                    <div className="address-input-group">
+                                        <div className="input-icon">ð</div>
+                                        <input
+                                            type="text"
+                                            name="state"
+                                            value={profile.state}
+                                            onChange={handleInputChange}
+                                            className="form-input address-input"
+                                            placeholder="State"
+                                        />
+                                    </div>
+                                </div>
+                                <div className="address-input-group">
+                                    <div className="input-icon">ð</div>
+                                    <input
+                                        type="text"
+                                        name="zipCode"
+                                        value={profile.zipCode}
+                                        onChange={handleInputChange}
+                                        className="form-input address-input"
+                                        placeholder="ZIP Code"
+                                    />
                                 </div>
                             </div>
                         ) : (
-                            <div className="empty-state-card">
-                                <span className="empty-icon">📭</span>
-                                <h3>No Transactions Yet</h3>
-                                <p>Start adding your scrap collections to see them here.</p>
-                                <button className="btn-primary" onClick={handleAddCollection}>
-                                    Add Your First Collection
-                                </button>
+                            <div className="address-display">
+                                {profile.address && (
+                                    <div className="address-item">
+                                        <div className="address-icon">ð</div>
+                                        <p className="address-text">{profile.address}</p>
+                                    </div>
+                                )}
+                                {(profile.city || profile.state || profile.zipCode) && (
+                                    <div className="address-item">
+                                        <div className="address-icon">ð</div>
+                                        <p className="address-text">
+                                            {[profile.city, profile.state, profile.zipCode].filter(Boolean).join(', ')}
+                                        </p>
+                                    </div>
+                                )}
+                                {!profile.address && !profile.city && !profile.state && !profile.zipCode && (
+                                    <div className="address-empty">
+                                        <div className="empty-icon">ð</div>
+                                        <p className="empty-text">No business address provided yet</p>
+                                        <p className="empty-subtext">Add your address to help customers find you</p>
+                                    </div>
+                                )}
                             </div>
                         )}
+                    </div>
+
+                    {/* Business Details */}
+                    <div className="profile-section">
+                        <h2 className="section-title">Business Details</h2>
+                        <div className="info-grid">
+                            <div className="info-group full-width">
+                                <label>Business Description</label>
+                                {isEditing ? (
+                                    <textarea
+                                        name="description"
+                                        value={profile.description}
+                                        onChange={handleInputChange}
+                                        className="form-textarea"
+                                        rows="4"
+                                        placeholder="Describe your business, services, and what makes you unique..."
+                                    />
+                                ) : (
+                                    <p>{profile.description || 'No description provided'}</p>
+                                )}
+                            </div>
+                            <div className="info-group">
+                                <label>Established Year</label>
+                                {isEditing ? (
+                                    <input
+                                        type="number"
+                                        name="establishedYear"
+                                        value={profile.establishedYear}
+                                        onChange={handleInputChange}
+                                        className="form-input"
+                                        min="1900"
+                                        max={new Date().getFullYear()}
+                                    />
+                                ) : (
+                                    <p>{profile.establishedYear || 'Not provided'}</p>
+                                )}
+                            </div>
+                            <div className="info-group">
+                                <label>Working Hours</label>
+                                {isEditing ? (
+                                    <input
+                                        type="text"
+                                        name="workingHours"
+                                        value={profile.workingHours}
+                                        onChange={handleInputChange}
+                                        className="form-input"
+                                        placeholder="e.g., Mon-Fri: 9AM-6PM, Sat: 9AM-1PM"
+                                    />
+                                ) : (
+                                    <p>{profile.workingHours || 'Not provided'}</p>
+                                )}
+                            </div>
+                            <div className="info-group">
+                                <label>Website</label>
+                                {isEditing ? (
+                                    <input
+                                        type="url"
+                                        name="website"
+                                        value={profile.website}
+                                        onChange={handleInputChange}
+                                        className="form-input"
+                                        placeholder="https://yourwebsite.com"
+                                    />
+                                ) : (
+                                    <p>{profile.website ? <a href={profile.website} target="_blank" rel="noopener noreferrer">{profile.website}</a> : 'Not provided'}</p>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Services */}
+                    <div className="profile-section">
+                        <h2 className="section-title">Services Offered</h2>
+                        <div className="services-grid">
+                            {availableServices.map(service => (
+                                <div key={service} className="service-item">
+                                    <label className="checkbox-label">
+                                        <input
+                                            type="checkbox"
+                                            checked={profile.services?.includes(service) || false}
+                                            onChange={() => handleServiceToggle(service)}
+                                            disabled={!isEditing}
+                                        />
+                                        <span className="checkmark"></span>
+                                        {service}
+                                    </label>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* Specialties */}
+                    <div className="profile-section">
+                        <h2 className="section-title">Specialties & Expertise</h2>
+                        <div className="info-group full-width">
+                            {isEditing ? (
+                                <textarea
+                                    name="specialties"
+                                    value={profile.specialties}
+                                    onChange={handleInputChange}
+                                    className="form-textarea"
+                                    rows="3"
+                                    placeholder="Describe your specialties, expertise, and unique selling points..."
+                                />
+                            ) : (
+                                <p>{profile.specialties || 'No specialties specified'}</p>
+                            )}
+                        </div>
+                    </div>
+
+                    {/* Service Area */}
+                    <div className="profile-section">
+                        <h2 className="section-title">Service Area & Requirements</h2>
+                        <div className="info-grid">
+                            <div className="info-group">
+                                <label>Pickup Radius (km)</label>
+                                {isEditing ? (
+                                    <input
+                                        type="number"
+                                        name="pickupRadius"
+                                        value={profile.pickupRadius}
+                                        onChange={handleInputChange}
+                                        className="form-input"
+                                        min="1"
+                                        placeholder="e.g., 25"
+                                    />
+                                ) : (
+                                    <p>{profile.pickupRadius ? `${profile.pickupRadius} km` : 'Not specified'}</p>
+                                )}
+                            </div>
+                            <div className="info-group">
+                                <label>Minimum Weight (kg)</label>
+                                {isEditing ? (
+                                    <input
+                                        type="number"
+                                        name="minimumWeight"
+                                        value={profile.minimumWeight}
+                                        onChange={handleInputChange}
+                                        className="form-input"
+                                        min="1"
+                                        placeholder="e.g., 10"
+                                    />
+                                ) : (
+                                    <p>{profile.minimumWeight ? `${profile.minimumWeight} kg` : 'Not specified'}</p>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Payment Methods */}
+                    <div className="profile-section">
+                        <h2 className="section-title">Accepted Payment Methods</h2>
+                        <div className="payment-grid">
+                            {paymentMethodsOptions.map(method => (
+                                <div key={method} className="payment-item">
+                                    <label className="checkbox-label">
+                                        <input
+                                            type="checkbox"
+                                            checked={profile.paymentMethods?.includes(method) || false}
+                                            onChange={() => handlePaymentMethodToggle(method)}
+                                            disabled={!isEditing}
+                                        />
+                                        <span className="checkmark"></span>
+                                        {method}
+                                    </label>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* Certifications */}
+                    <div className="profile-section">
+                        <h2 className="section-title">Certifications & Licenses</h2>
+                        <div className="certifications-grid">
+                            {certificationOptions.map(certification => (
+                                <div key={certification} className="certification-item">
+                                    <label className="checkbox-label">
+                                        <input
+                                            type="checkbox"
+                                            checked={profile.certifications?.includes(certification) || false}
+                                            onChange={() => handleCertificationToggle(certification)}
+                                            disabled={!isEditing}
+                                        />
+                                        <span className="checkmark"></span>
+                                        {certification}
+                                    </label>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* Social Media */}
+                    <div className="profile-section">
+                        <h2 className="section-title">Social Media</h2>
+                        <div className="info-grid">
+                            <div className="info-group">
+                                <label>Facebook</label>
+                                {isEditing ? (
+                                    <input
+                                        type="url"
+                                        name="socialMedia.facebook"
+                                        value={profile.socialMedia?.facebook || ''}
+                                        onChange={handleInputChange}
+                                        className="form-input"
+                                        placeholder="https://facebook.com/yourpage"
+                                    />
+                                ) : (
+                                    <p>{profile.socialMedia?.facebook ? <a href={profile.socialMedia.facebook} target="_blank" rel="noopener noreferrer">View Profile</a> : 'Not provided'}</p>
+                                )}
+                            </div>
+                            <div className="info-group">
+                                <label>Instagram</label>
+                                {isEditing ? (
+                                    <input
+                                        type="url"
+                                        name="socialMedia.instagram"
+                                        value={profile.socialMedia?.instagram || ''}
+                                        onChange={handleInputChange}
+                                        className="form-input"
+                                        placeholder="https://instagram.com/yourprofile"
+                                    />
+                                ) : (
+                                    <p>{profile.socialMedia?.instagram ? <a href={profile.socialMedia.instagram} target="_blank" rel="noopener noreferrer">View Profile</a> : 'Not provided'}</p>
+                                )}
+                            </div>
+                            <div className="info-group">
+                                <label>Twitter</label>
+                                {isEditing ? (
+                                    <input
+                                        type="url"
+                                        name="socialMedia.twitter"
+                                        value={profile.socialMedia?.twitter || ''}
+                                        onChange={handleInputChange}
+                                        className="form-input"
+                                        placeholder="https://twitter.com/yourhandle"
+                                    />
+                                ) : (
+                                    <p>{profile.socialMedia?.twitter ? <a href={profile.socialMedia.twitter} target="_blank" rel="noopener noreferrer">View Profile</a> : 'Not provided'}</p>
+                                )}
+                            </div>
+                            <div className="info-group">
+                                <label>LinkedIn</label>
+                                {isEditing ? (
+                                    <input
+                                        type="url"
+                                        name="socialMedia.linkedin"
+                                        value={profile.socialMedia?.linkedin || ''}
+                                        onChange={handleInputChange}
+                                        className="form-input"
+                                        placeholder="https://linkedin.com/in/yourprofile"
+                                    />
+                                ) : (
+                                    <p>{profile.socialMedia?.linkedin ? <a href={profile.socialMedia.linkedin} target="_blank" rel="noopener noreferrer">View Profile</a> : 'Not provided'}</p>
+                                )}
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
     );
 }
-
 
 export default ScrapDealer;
