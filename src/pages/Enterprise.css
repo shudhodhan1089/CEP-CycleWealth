@@ -137,10 +137,24 @@
     padding: 15px;
 }
 
-.step-number {
+/* .step-number {
     width: 50px;
     height: 50px;
-    background: #0f9d58;
+    background: #90b6a4;
+    color: white;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.3rem;
+    font-weight: bold;
+    margin: 0 auto 15px;
+} */
+
+.step-num {
+    width: 50px;
+    height: 50px;
+    background: #199c5f;
     color: white;
     border-radius: 50%;
     display: flex;
@@ -154,20 +168,22 @@
 .step h3 {
     font-size: 1rem;
     margin-bottom: 10px;
+    margin-top: 10px;
     color: #2d3748;
 }
 
 .step p {
-    color: #718096;
+   
     line-height: 1.5;
-    font-size: 0.85rem;
+    font-size: 1rem;
+    font-weight:500;
 }
 
 /* Stats Section */
 .enterprise-stats {
     background: linear-gradient(135deg, #0f9d58, #34d399);
     padding: 60px 40px;
-    color: white;
+    color: rgb(70, 165, 51);
 }
 
 .stats-container {
@@ -203,7 +219,7 @@
     color: #2d3748;
 }
 
-.enterprise-cta > p {
+.enterprise-cta>p {
     text-align: center;
     font-size: 1.2rem;
     color: #718096;
@@ -379,31 +395,31 @@
     .enterprise-hero-content h1 {
         font-size: 2.5rem;
     }
-    
+
     .enterprise-hero-content p {
         font-size: 1.1rem;
     }
-    
+
     .enterprise-hero-buttons {
         flex-direction: column;
         align-items: center;
     }
-    
+
     .enterprise-hero-buttons button {
         width: 200px;
     }
-    
+
     .form-row {
         grid-template-columns: 1fr;
     }
-    
+
     .benefits-grid,
     .process-steps,
     .stats-container,
     .testimonials-grid {
         grid-template-columns: 1fr;
     }
-    
+
     .enterprise-benefits,
     .enterprise-process,
     .enterprise-stats,
@@ -411,7 +427,7 @@
     .enterprise-testimonials {
         padding: 60px 20px;
     }
-    
+
     .enterprise-form {
         padding: 30px 20px;
     }
@@ -421,11 +437,11 @@
     .enterprise-hero {
         padding: 80px 20px 60px;
     }
-    
+
     .enterprise-hero-content h1 {
         font-size: 2rem;
     }
-    
+
     .enterprise-benefits h2,
     .enterprise-process h2,
     .enterprise-cta h2,

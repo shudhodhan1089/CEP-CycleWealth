@@ -101,7 +101,7 @@ function SignUp() {
             <div className="auth-container">
                 <div className="card">
                     <h2>Create Account</h2>
-                    <p>Join CycleWealth and Start Recycling</p>
+                    <p className="signup-title">Join CycleWealth and Start Recycling</p>
 
                     {error && <p style={{ color: "red", fontSize: "14px" }}>{error}</p>}
                     {message && <p style={{ color: "green", fontSize: "14px", marginBottom: "10px" }}>{message}</p>}
