@@ -52,23 +52,50 @@
   background: white;
   padding: 40px;
   border-radius: 15px;
-  width: 300px;
+  width: 100%;
+  max-width: 450px;
+  min-width: 320px;
   text-align: center;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
 }
 
-.card input {
+.card form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.card input,
+.card select {
   width: 100%;
-  margin: 10px 0;
-  padding: 10px;
+  box-sizing: border-box;
+  padding: 12px;
   border-radius: 8px;
   border: 1px solid #ccc;
+  font-size: 14px;
 }
 
 .card button {
   width: 100%;
-  padding: 10px;
+  box-sizing: border-box;
+  padding: 12px;
   background: green;
   color: white;
   border: none;
   border-radius: 8px;
+  font-size: 14px;
+  cursor: pointer;
+  margin-top: 8px;
+}
+
+.card button:hover {
+  opacity: 0.9;
+}
+
+.login-title {
+  margin-bottom: 20px;
+}
+
+.signup-title {
+  margin-bottom: 20px;
 }

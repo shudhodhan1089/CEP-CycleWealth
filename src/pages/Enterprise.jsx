@@ -172,22 +172,22 @@ function Enterprise() {
                 <h2>Simple 4-Step Process</h2>
                 <div className="process-steps">
                     <div className="step">
-                        <div className="step-number">1</div>
+                        <div className="step-num">1</div>
                         <h3>Register Your Business</h3>
                         <p>Create your enterprise account and verify your business details</p>
                     </div>
                     <div className="step">
-                        <div className="step-number">2</div>
+                        <div className="step-num">2</div>
                         <h3>Post Requirements</h3>
                         <p>Specify your scrap material needs, quantity, and budget</p>
                     </div>
                     <div className="step">
-                        <div className="step-number">3</div>
+                        <div className="step-num">3</div>
                         <h3>Connect with Dealers</h3>
                         <p>Get matched with verified dealers in your area</p>
                     </div>
                     <div className="step">
-                        <div className="step-number">4</div>
+                        <div className="step-num">4</div>
                         <h3>Finalize Deals</h3>
                         <p>Negotiate terms and complete transactions securely</p>
                     </div>

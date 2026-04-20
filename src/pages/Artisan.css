@@ -167,12 +167,23 @@
 }
 
 .stat-value {
-    font-size: 32px;
+    color: rgb(236, 233, 233);
+  font-size: 24px;
+    display: flex;
+    justify-content: center;
+    text-align: center;
+}
+.stat-value::after {
+    content: 'KG';
+    color: white;
+    font-size: 12px;
     font-weight: bold;
     margin-bottom: 8px;
 }
 
+
 .stat-label {
+    color: white;
     font-size: 14px;
     opacity: 0.95;
 }
@@ -275,6 +286,7 @@
 }
 
 .action-btn {
+    width: 100%;
     padding: 12px 30px;
     border-radius: 8px;
     font-size: 15px;
@@ -293,6 +305,8 @@
     background: linear-gradient(135deg, #9c27b0, #ce93d8);
     color: white;
 }
+
+
 
 .action-btn:hover {
     transform: scale(1.05);

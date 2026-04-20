@@ -86,7 +86,7 @@ function Login() {
     return (
         <div className="auth-container">
             <div className="card">
-                <h2>Login</h2>
+                <h2 className="login-title">Login</h2>
 
                 {error && <p style={{ color: "red", fontSize: "14px" }}>{error}</p>}
 
