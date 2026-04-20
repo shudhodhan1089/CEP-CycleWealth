@@ -2,19 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import './SharedNavbar.css';
 
-function SharedNavbar({ activeLink = null, badgeCount = 0, user = null }) {
+function SkilledNav({ activeLink = null, badgeCount = 0, user = null }) {
     const navigate = useNavigate();
     const [isEnterpriseRegistered, setIsEnterpriseRegistered] = useState(false);
-    const [currentUser, setCurrentUser] = useState(null);
 
     useEffect(() => {
         const enterpriseRegistered = sessionStorage.getItem('enterpriseRegistered');
         setIsEnterpriseRegistered(enterpriseRegistered === 'true');
-        
-        const sessionUser = sessionStorage.getItem('user');
-        if (sessionUser) {
-            setCurrentUser(JSON.parse(sessionUser));
-        }
     }, []);
 
     const handleLogin = () => {
@@ -47,9 +41,6 @@ function SharedNavbar({ activeLink = null, badgeCount = 0, user = null }) {
                         <span className="shared-nav__badge">{badgeCount}</span>
                     )}
                 </a>
-                                <a href="/enterprise" className={`shared-nav__link ${activeLink === 'enterprise' ? 'shared-nav__link--active' : ''}`}>
-                    Enterprise
-                </a>
                 {isEnterpriseRegistered && (
                     <a href="/companyorder" className={`shared-nav__link ${activeLink === 'companyorder' ? 'shared-nav__link--active' : ''}`}>
                         Order Scrap
@@ -76,4 +67,4 @@ function SharedNavbar({ activeLink = null, badgeCount = 0, user = null }) {
     );
 }
 
-export default SharedNavbar;
+export default SkilledNav;
