@@ -453,3 +453,57 @@ export const sendScrapRequestNotification = async (dealerId, requestData) => {
         throw error;
     }
 };
+
+/**
+ * Get all scrap orders placed by the current artisan
+ * @returns {Promise<Array>} - Array of orders with dealer info
+ */
+export const getMyScrapOrders = async () => {
+    try {
+        const user = JSON.parse(sessionStorage.getItem('user'));
+        if (!user || !user.user_id) {
+            throw new Error('User not authenticated');
+        }
+
+        // Fetch orders where user is the buyer
+        const { data: orders, error: ordersError } = await supabaseClient
+            .from('orders')
+            .select('*')
+            .eq('buyer_id', user.user_id)
+            .eq('order_type', 'customers')
+            .order('created_at', { ascending: false });
+
+        if (ordersError) throw ordersError;
+
+        if (!orders || orders.length === 0) {
+            return [];
+        }
+
+        // Get seller IDs to fetch dealer names
+        const sellerIds = orders.map(o => o.seller_id).filter(Boolean);
+
+        // Fetch dealer profiles
+        const { data: dealers, error: dealersError } = await supabaseClient
+            .from('scrapdealer_profile')
+            .select('dealer_id, business_name')
+            .in('dealer_id', sellerIds);
+
+        if (dealersError) {
+            console.error('Error fetching dealer names:', dealersError);
+        }
+
+        // Combine orders with dealer names
+        const ordersWithDealers = orders.map(order => {
+            const dealer = dealers?.find(d => d.dealer_id === order.seller_id);
+            return {
+                ...order,
+                dealer_name: dealer?.business_name || 'Unknown Dealer'
+            };
+        });
+
+        return ordersWithDealers;
+    } catch (error) {
+        console.error('Error fetching my scrap orders:', error);
+        return [];
+    }
+};

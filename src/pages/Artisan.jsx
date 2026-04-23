@@ -15,7 +15,8 @@ import {
     deleteArtisanProduct,
     getScrapDealers,
     createScrapOrder,
-    sendScrapRequestNotification
+    sendScrapRequestNotification,
+    getMyScrapOrders
 } from '../services/artisanService';
 
 
@@ -45,6 +46,11 @@ function Artisan() {
         offeredPrice: '',
         notes: ''
     });
+
+    // My Scrap Orders modal state
+    const [showMyOrdersModal, setShowMyOrdersModal] = useState(false);
+    const [myOrders, setMyOrders] = useState([]);
+    const [loadingOrders, setLoadingOrders] = useState(false);
 
     // Profile form state
     const [profileForm, setProfileForm] = useState({
@@ -196,6 +202,25 @@ function Artisan() {
             offeredPrice: '',
             notes: ''
         });
+    };
+
+    // My Scrap Orders modal handlers
+    const openMyOrdersModal = async () => {
+        setShowMyOrdersModal(true);
+        setLoadingOrders(true);
+        try {
+            const orders = await getMyScrapOrders();
+            setMyOrders(orders || []);
+        } catch (err) {
+            console.error('Error fetching orders:', err);
+        } finally {
+            setLoadingOrders(false);
+        }
+    };
+
+    const closeMyOrdersModal = () => {
+        setShowMyOrdersModal(false);
+        setMyOrders([]);
     };
 
     const handleBuyScrapSubmit = async (e) => {
@@ -516,6 +541,12 @@ function Artisan() {
                                 <p>List your upcycled products for eco-conscious consumers</p>
                                 <button className="action-btn secondary">Add Product</button>
                             </div>
+                            <div className="action-card orders-card" onClick={openMyOrdersModal}>
+                                <div className="action-icon">📦</div>
+                                <h3>My Scrap Orders</h3>
+                                <p>View your scrap purchase history and dealer responses</p>
+                                <button className="action-btn orders">View Orders</button>
+                            </div>
                         </div>
                     </>
                 )}
@@ -611,7 +642,7 @@ function Artisan() {
                             </div>
                             <div className="inv-stat">
                                 <span className="label">Remaining</span>
-                                <span className="value remaining">{totalListed - totalSold}</span>
+                                <span className="value remaining">{Math.max(0, totalListed - totalSold)}</span>
                             </div>
                         </div>
 
@@ -889,6 +920,72 @@ function Artisan() {
                                 {submittingRequest ? 'Sending Request...' : 'Send Request to Dealer'}
                             </button>
                         </form>
+                    </div>
+                </div>
+            )}
+
+            {/* My Scrap Orders Modal */}
+            {showMyOrdersModal && (
+                <div className="modal-overlay" onClick={closeMyOrdersModal}>
+                    <div className="my-orders-modal" onClick={e => e.stopPropagation()}>
+                        <div className="modal-header">
+                            <h2>📦 My Scrap Orders</h2>
+                            <button className="close-modal" onClick={closeMyOrdersModal}>&times;</button>
+                        </div>
+                        <div className="orders-content">
+                            {loadingOrders ? (
+                                <div className="loading-orders">Loading your orders...</div>
+                            ) : myOrders.length === 0 ? (
+                                <div className="no-orders-found">
+                                    <p>No scrap orders found.</p>
+                                    <span>Start buying scrap from dealers!</span>
+                                </div>
+                            ) : (
+                                <div className="orders-list">
+                                    {myOrders.map(order => (
+                                        <div key={order.order_id} className={`order-card ${order.order_status}`}>
+                                            <div className="order-header">
+                                                <span className="order-id">Order #{order.order_id?.slice(0, 8)}</span>
+                                                <span className={`order-status ${order.order_status}`}>
+                                                    {order.order_status === 'processing' ? '⏳ Pending' :
+                                                        order.order_status === 'shipped' ? '✅ Accepted' :
+                                                            order.order_status === 'delivered' ? '❌ Declined' : order.order_status}
+                                                </span>
+                                            </div>
+                                            <div className="order-details">
+                                                <div className="detail-row">
+                                                    <span className="label">Dealer:</span>
+                                                    <span className="value">{order.dealer_name || 'Unknown Dealer'}</span>
+                                                </div>
+                                                <div className="detail-row">
+                                                    <span className="label">Amount:</span>
+                                                    <span className="value">₹{order.total_amount}/kg</span>
+                                                </div>
+                                                <div className="detail-row">
+                                                    <span className="label">Date:</span>
+                                                    <span className="value">{new Date(order.created_at).toLocaleDateString()}</span>
+                                                </div>
+                                            </div>
+                                            {order.order_status === 'shipped' && (
+                                                <div className="order-message success">
+                                                    Dealer accepted your offer! You can now coordinate pickup.
+                                                </div>
+                                            )}
+                                            {order.order_status === 'delivered' && (
+                                                <div className="order-message declined">
+                                                    Dealer declined your offer. Try another dealer or adjust your offer.
+                                                </div>
+                                            )}
+                                            {order.counter_price && (
+                                                <div className="order-message counter">
+                                                    Dealer counter offered: ₹{order.counter_price}/kg
+                                                </div>
+                                            )}
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
                     </div>
                 </div>
             )}
