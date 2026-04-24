@@ -539,7 +539,24 @@ function ViewScrapInventory() {
                                 <div className="receiver-modal-content">
                                     <div className="item-info">
                                         <p><strong>Material:</strong> {selectedItem?.scrap_categories?.scrap_type}</p>
-                                        <p><strong>Weight:</strong> {selectedItem?.weight} kg</p>
+                                        <p><strong>Available Weight:</strong> {selectedItem?.weight} kg</p>
+                                    </div>
+
+                                    <div className="form-group">
+                                        <label>Quantity to Transfer (kg):</label>
+                                        <input
+                                            type="number"
+                                            value={transferQuantity}
+                                            onChange={(e) => setTransferQuantity(e.target.value)}
+                                            placeholder="Enter quantity in kg"
+                                            className="quantity-input"
+                                            min="0.01"
+                                            max={selectedItem?.weight}
+                                            step="0.01"
+                                        />
+                                        <small className="quantity-hint">
+                                            Max: {selectedItem?.weight} kg
+                                        </small>
                                     </div>
 
                                     <div className="form-group">
