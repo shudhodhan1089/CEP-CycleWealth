@@ -335,6 +335,27 @@
   line-height: 1.4;
 }
 
+.dealer-phone {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+  padding: 8px 12px;
+  background: #e8f5e9;
+  border-radius: 6px;
+  width: fit-content;
+}
+
+.phone-icon {
+  font-size: 16px;
+}
+
+.phone-number {
+  color: #0f9d58;
+  font-size: 15px;
+  font-weight: 600;
+}
+
 .distance-badge {
   background: #e8f5e9;
   color: #0f9d58;

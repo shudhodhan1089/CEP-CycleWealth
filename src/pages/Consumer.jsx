@@ -516,6 +516,11 @@ function Consumer() {
                                             <span className="distance-badge">{dealer.distance}</span>
                                         </div>
 
+                                        <div className="dealer-phone">
+                                            <span className="phone-icon">📞</span>
+                                            <span className="phone-number">{dealer.phone || 'Contact not available'}</span>
+                                        </div>
+
                                         <div className="dealer-materials">
                                             {dealer.materials.map((material, idx) => (
                                                 <span key={idx} className="material-tag">{material}</span>
