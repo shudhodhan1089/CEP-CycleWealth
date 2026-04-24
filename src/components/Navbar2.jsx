@@ -55,6 +55,9 @@ function Navbar2({ activeLink = null, badgeCount = 0, user = null }) {
                         <span className="shared-nav__badge">{badgeCount}</span>
                     )}
                 </Link>
+                <Link to="/notifications" className={`shared-nav__link ${activeLink === 'notifications' ? 'shared-nav__link--active' : ''}`}>
+                    Notifications
+                </Link>
 
                 {isEnterpriseRegistered && (
                     <Link to="/companyorder" className={`shared-nav__link ${activeLink === 'companyorder' ? 'shared-nav__link--active' : ''}`}>
