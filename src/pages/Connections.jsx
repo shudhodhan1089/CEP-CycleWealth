@@ -147,10 +147,17 @@ function Connections() {
     console.log('Received requests:', receivedRequests);
     console.log('Sent requests:', sentRequests);
 
-    const discoveryList = allUsers.filter(u =>
-        !getConnectionStatus(u.user_id) &&
-        u.role !== 'ScrapDealer'
-    );
+    const discoveryList = allUsers.filter(u => {
+        if (getConnectionStatus(u.user_id)) return false;
+
+        // For industries, only show scrap dealers
+        if (currentUser?.role === 'Industry') {
+            return u.role === 'ScrapDealer';
+        }
+
+        // For others, exclude scrap dealers (original behavior)
+        return u.role !== 'ScrapDealer';
+    });
 
     console.log('=== DEBUG: Discovery List ===');
     console.log('All users count:', allUsers.length);

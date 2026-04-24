@@ -653,3 +653,125 @@
     justify-content: flex-start;
   }
 }
+
+/* Contact Modal Styles */
+.contact-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.contact-modal {
+  background: white;
+  border-radius: 12px;
+  width: 90%;
+  max-width: 400px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+  overflow: hidden;
+}
+
+.contact-modal-header {
+  background: linear-gradient(135deg, #0f9d58, #34d399);
+  color: white;
+  padding: 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.contact-modal-header h3 {
+  margin: 0;
+  font-size: 18px;
+}
+
+.contact-modal-header .close-btn {
+  background: none;
+  border: none;
+  color: white;
+  font-size: 24px;
+  cursor: pointer;
+  padding: 0;
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  transition: background 0.3s ease;
+}
+
+.contact-modal-header .close-btn:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.contact-modal-content {
+  padding: 25px;
+  text-align: center;
+}
+
+.contact-modal-content .dealer-info {
+  margin-bottom: 20px;
+}
+
+.contact-modal-content .dealer-info h4 {
+  margin: 0 0 5px 0;
+  color: #333;
+  font-size: 20px;
+}
+
+.contact-modal-content .dealer-owner {
+  margin: 0;
+  color: #666;
+  font-size: 14px;
+}
+
+.phone-number-box {
+  background: #f5f5f5;
+  border-radius: 8px;
+  padding: 20px;
+  margin-bottom: 20px;
+}
+
+.phone-label {
+  display: block;
+  color: #666;
+  font-size: 14px;
+  margin-bottom: 8px;
+}
+
+.phone-value {
+  display: block;
+  color: #0f9d58;
+  font-size: 24px;
+  font-weight: 700;
+  letter-spacing: 1px;
+}
+
+.call-now-btn {
+  width: 100%;
+  padding: 15px;
+  background: linear-gradient(135deg, #0f9d58, #34d399);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: all 0.3s ease;
+}
+
+.call-now-btn:hover {
+  background: linear-gradient(135deg, #0d8b4d, #2bc889);
+  transform: scale(1.02);
+}

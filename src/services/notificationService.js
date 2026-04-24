@@ -420,10 +420,54 @@ export const sendScrapInventoryNotification = async (scrapDealerId, dealerName, 
             conn.requester_id === scrapDealerId ? conn.receiver_id : conn.requester_id
         );
 
-        // Create notification message
+        // Get dealer location from profile
+        let dealerLocation = '';
+        try {
+            const { data: dealerProfile, error: profileError } = await supabaseClient
+                .from('scrapdealer_profile')
+                .select('"Area", "City", "State"')
+                .eq('dealer_id', scrapDealerId)
+                .single();
+
+            if (!profileError && dealerProfile) {
+                const locationParts = [dealerProfile.Area, dealerProfile.City, dealerProfile.State].filter(Boolean);
+                dealerLocation = locationParts.length > 0 ? ` at ${locationParts.join(', ')}` : '';
+            }
+        } catch (e) {
+            console.log('Could not fetch dealer location');
+        }
+
+        // Get total collected weight in kg for this scrap type
         const materialType = scrapData.material_type || scrapData.category || 'Scrap';
-        const quantity = scrapData.quantity || scrapData.amount || 'some';
-        const message = `${dealerName} added new ${materialType} inventory: ${quantity} available`;
+        let totalWeightKg = 0;
+
+        try {
+            // Get category_id for this scrap type
+            const { data: categoryData, error: catError } = await supabaseClient
+                .from('scrap_categories')
+                .select('category_id')
+                .eq('scrap_type', materialType)
+                .single();
+
+            if (!catError && categoryData) {
+                // Sum up all weights from scrap_inventory for this category
+                const { data: inventoryData, error: invError } = await supabaseClient
+                    .from('scrap_inventory')
+                    .select('weight')
+                    .eq('category_id', categoryData.category_id);
+
+                if (!invError && inventoryData) {
+                    totalWeightKg = inventoryData.reduce((sum, item) => sum + (parseFloat(item.weight) || 0), 0);
+                }
+            }
+        } catch (e) {
+            console.log('Could not fetch total weight, using added weight');
+        }
+
+        // Use total weight if available, otherwise use the newly added weight
+        const weightToShow = totalWeightKg > 0 ? totalWeightKg : (scrapData.weight || 0);
+        const description = scrapData.description ? ` - ${scrapData.description}` : '';
+        const message = `${dealerName}${dealerLocation} has ${weightToShow} kg ${materialType} scrap collected${description}`;
 
         // Send notifications to all connected users
         const notifications = connectedUserIds.map(userId => ({

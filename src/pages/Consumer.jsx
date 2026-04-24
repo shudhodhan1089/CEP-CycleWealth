@@ -17,6 +17,8 @@ function Consumer() {
     const [scrapDealers, setScrapDealers] = useState([]);
     const [loadingDealers, setLoadingDealers] = useState(false);
     const [userLocation, setUserLocation] = useState(null);
+    const [showContactModal, setShowContactModal] = useState(false);
+    const [selectedDealer, setSelectedDealer] = useState(null);
 
     // Haversine formula to calculate distance between two coordinates
     const calculateDistance = (lat1, lon1, lat2, lon2) => {
@@ -180,12 +182,22 @@ function Consumer() {
         }
     };
 
-    // Handle contact button click
+    // Handle contact button click - show phone number in modal
     const handleContact = (dealer) => {
-        if (dealer.phone) {
-            window.location.href = `tel:${dealer.phone}`;
-        } else if (dealer.email) {
-            window.location.href = `mailto:${dealer.email}`;
+        setSelectedDealer(dealer);
+        setShowContactModal(true);
+    };
+
+    // Close contact modal
+    const closeContactModal = () => {
+        setShowContactModal(false);
+        setSelectedDealer(null);
+    };
+
+    // Call the dealer
+    const callDealer = () => {
+        if (selectedDealer?.phone) {
+            window.location.href = `tel:${selectedDealer.phone}`;
         }
     };
 
@@ -450,6 +462,33 @@ function Consumer() {
                             <div className="stat-card orders">
                                 <div className="stat-value">{stats.activeOrders}</div>
                                 <div className="stat-label">Active Orders</div>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {/* Contact Modal */}
+                {showContactModal && selectedDealer && (
+                    <div className="contact-modal-overlay" onClick={closeContactModal}>
+                        <div className="contact-modal" onClick={(e) => e.stopPropagation()}>
+                            <div className="contact-modal-header">
+                                <h3>📞 Contact Information</h3>
+                                <button className="close-btn" onClick={closeContactModal}>×</button>
+                            </div>
+                            <div className="contact-modal-content">
+                                <div className="dealer-info">
+                                    <h4>{selectedDealer.name}</h4>
+                                    <p className="dealer-owner">{selectedDealer.owner}</p>
+                                </div>
+                                <div className="phone-number-box">
+                                    <span className="phone-label">Phone Number:</span>
+                                    <span className="phone-value">{selectedDealer.phone || 'Not available'}</span>
+                                </div>
+                                {selectedDealer.phone && (
+                                    <button className="call-now-btn" onClick={callDealer}>
+                                        📞 Call Now
+                                    </button>
+                                )}
                             </div>
                         </div>
                     </div>
